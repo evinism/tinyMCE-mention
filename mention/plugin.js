@@ -19,7 +19,8 @@
         this.insert = this.options.insert || this.insert;
         this.highlighter = this.options.highlighter || this.highlighter;
 
-        this.query = '';
+        this.query = this.options.query || '';
+
         this.hasFocus = true;
 
         this.renderInput();
@@ -346,13 +347,7 @@
             // If the delimiter is a string value convert it to an array. (backwards compatibility)
             autoCompleteData.delimiter = (autoCompleteData.delimiter !== undefined) ? !$.isArray(autoCompleteData.delimiter) ? [autoCompleteData.delimiter] : autoCompleteData.delimiter : ['@'];
 
-            function prevCharIsSpace() {
-                var start = ed.selection.getRng(true).startOffset,
-                      text = ed.selection.getRng(true).startContainer.data || '',
-                      charachter = text.substr(start - 1, 1);
-
-                return (!!$.trim(charachter).length) ? false : true;
-            }
+            var triggers = autoCompleteData.implicitTriggers || [];
 
             ed.on('keypress', function (e) {
                 var delimiterIndex = $.inArray(String.fromCharCode(e.which || e.keyCode), autoCompleteData.delimiter);
@@ -362,9 +357,26 @@
                         // Clone options object and set the used delimiter.
                         autoComplete = new AutoComplete(ed, $.extend({}, autoCompleteData, { delimiter: autoCompleteData.delimiter[delimiterIndex] }));
                     }
+                }else{
+                    // Handling all explicit triggers
+                    for(var ct=0; ct<triggers.length; ct++){
+                        var curTrig = triggers[ct];
+                        console.log(curTrig);
+                        if (curTrig(e) && (autoComplete === undefined || (autoComplete.hasFocus !== undefined && !autoComplete.hasFocus))) {
+                            // Clone options object, delimiter for implicit triggers is blank.
+                            autoComplete = new AutoComplete(ed, $.extend({}, autoCompleteData, { delimiter: '' }));
+                        }
+                    }
                 }
             });
 
+            function prevCharIsSpace() {
+                var start = ed.selection.getRng(true).startOffset,
+                      text = ed.selection.getRng(true).startContainer.data || '',
+                      charachter = text.substr(start - 1, 1);
+
+                return (!!$.trim(charachter).length) ? false : true;
+            }
         },
 
         getInfo: function () {

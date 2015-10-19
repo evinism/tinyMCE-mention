@@ -9,13 +9,7 @@
     <script src="../ext/tinymce.min.js"></script>
     <script type="text/javascript" src="../mention/plugin.js"></script>
     <script type="text/javascript">
-
-        tinyMCE.init({
-            mode : "exact",
-            elements : "rte",
-            plugins : 'mention',
-            mentions: {
-                source: [
+        var data1 = [
                     { name: 'Jammie Marbury'},
                     { name: 'Jenniffer Caffey'},
                     { name: 'Paul Hollen'},
@@ -66,15 +60,38 @@
                     { name: 'Brianna Repka'},
                     { name: 'Marcella Thronson'},
                     { name: 'Theresia Provenzano'}
-                ],
+                ];
+
+        var data2 = [
+                    { name: 'George Data2'},
+                    { name: 'Gemmy Gentoo'},
+                ];
+
+        //We want to trigger a lookup on long words that start with G.
+        function startsWithG(e, word){
+            if (word.length>3 && word[0].toLowerCase()=='g')
+                return true;
+            return false;
+        };
+
+        //This shows that we can switch on delimiter source
+        function mceSource(query, process, delimiter){
+            console.log('delimiter is');
+            console.log(delimiter);
+            if(delimiter === startsWithG )
+                process(data2);
+            else
+                process(data1);//Process different data for different delimiters
+        };
+
+        tinyMCE.init({
+            mode : "exact",
+            elements : "rte",
+            plugins : 'mention',
+            mentions: {
+                source: mceSource,
                 implicitTriggers: [ 
-                    function(e){
-                        if(e.keyCode==71){
-                            alert("TRIGGERED.")
-                            return true;
-                        }
-                        return false;
-                    },
+                    startsWithG
                 ]
             }
         });

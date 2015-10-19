@@ -164,7 +164,8 @@
             clearTimeout(this.searchTimeout);
             this.searchTimeout = setTimeout($.proxy(function () {
                 // Added delimiter parameter as last argument for backwards compatibility.
-                var items = $.isFunction(this.options.source) ? this.options.source(this.query, $.proxy(this.process, this), this.options.delimiter) : this.options.source;
+                var returnedDelimiter = this.options.delimiter || this.options.implicitTrigger;
+                var items = $.isFunction(this.options.source) ? this.options.source(this.query, $.proxy(this.process, this), returnedDelimiter) : this.options.source;
                 if (items) {
                     this.process(items);
                 }
@@ -359,12 +360,19 @@
                     }
                 }else{
                     // Handling all explicit triggers
+                    // Explicit triggers have word scope. Prototype is as follows
+                    // trigger(event, word);
+                    // event is keypress event, word is pre-propogation word.
+
+                    var word = ed.selection.getRng(true).startContainer.data || '';
+
+                    //And apply all triggers
                     for(var ct=0; ct<triggers.length; ct++){
-                        var curTrig = triggers[ct];
-                        console.log(curTrig);
-                        if (curTrig(e) && (autoComplete === undefined || (autoComplete.hasFocus !== undefined && !autoComplete.hasFocus))) {
-                            // Clone options object, delimiter for implicit triggers is blank.
-                            autoComplete = new AutoComplete(ed, $.extend({}, autoCompleteData, { delimiter: '' }));
+                        var currentTrigger = triggers[ct];
+                        if (currentTrigger(e, word) && (autoComplete === undefined || (autoComplete.hasFocus !== undefined && !autoComplete.hasFocus))) {
+                            // delimiter for implicit triggers is rendered as blank, 
+                            // but is returned to source() as a reference to the function. 
+                            autoComplete = new AutoComplete(ed, $.extend({}, autoCompleteData, { delimiter: '', implicitTrigger: currentTrigger}));
                         }
                     }
                 }

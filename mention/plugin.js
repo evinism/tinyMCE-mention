@@ -35,7 +35,7 @@
         renderInput: function () {
             var rawHtml =  '<span id="autocomplete">' +
                                 '<span id="autocomplete-delimiter">' + this.options.delimiter + '</span>' +
-                                '<span id="autocomplete-searchtext"><span class="dummy">\uFEFF</span></span>' +
+                                '<span id="autocomplete-searchtext">' + this.query + '<span class="dummy">\uFEFF</span></span>' +
                             '</span>';
 
             this.editor.execCommand('mceInsertContent', false, rawHtml);
@@ -359,20 +359,27 @@
                         autoComplete = new AutoComplete(ed, $.extend({}, autoCompleteData, { delimiter: autoCompleteData.delimiter[delimiterIndex] }));
                     }
                 }else{
-                    // Handling all explicit triggers
-                    // Explicit triggers have word scope. Prototype is as follows
+                    // Handling all implicit triggers
+                    // Implicit triggers have word scope. Prototype is as follows
                     // trigger(event, word);
                     // event is keypress event, word is pre-propogation word.
-
-                    var word = ed.selection.getRng(true).startContainer.data || '';
+                    var start   = ed.selection.getRng(true).startOffset;
+                    var text    = ed.selection.getRng(true).startContainer.data || '';
+                    var prestr  = text.substr(0, start);
+                    var poststr = text.substr(start);
+                    var word    = prestr.split(/[^\w]/).pop();
+                    var trimmedprestr = prestr.substr(0, prestr.length - word.length)
 
                     //And apply all triggers
                     for(var ct=0; ct<triggers.length; ct++){
                         var currentTrigger = triggers[ct];
                         if (currentTrigger(e, word) && (autoComplete === undefined || (autoComplete.hasFocus !== undefined && !autoComplete.hasFocus))) {
                             // delimiter for implicit triggers is rendered as blank, 
-                            // but is returned to source() as a reference to the function. 
-                            autoComplete = new AutoComplete(ed, $.extend({}, autoCompleteData, { delimiter: '', implicitTrigger: currentTrigger}));
+                            // but is returned to source() as a reference to the function.
+                            ed.selection.getRng(true).startContainer.data = poststr;
+                            ed.execCommand('mceInsertContent', false, trimmedprestr);
+
+                            autoComplete = new AutoComplete(ed, $.extend({}, autoCompleteData, { query: word, delimiter: '', implicitTrigger: currentTrigger}));
                         }
                     }
                 }

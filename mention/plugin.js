@@ -3,6 +3,54 @@
 (function (tinymce, $) {
     'use strict';
 
+    // Tracker object
+    var Tracker = function(ed, autoCompleteData){
+      this.acData = autoCompleteData;
+      this.rules = this.acData.rules;
+      this.editor = ed;
+    }
+    
+    Tracker.prototype.match = function(autoCompleteData){
+      autoComplete = new AutoComplete(ed, $.extend({}, autoCompleteData));
+    }
+    
+    // Called every keypress to check against all existing rules.
+    // On match, build and execute AUTOCOMPLETE
+    Tracker.prototype.check = function(){
+        var rng = this.editor.selection.getRng();
+        if (!rng.collapsed){
+          return;
+        }
+        var $node = $(rng.startContainer);
+        if ($node[0].nodeType !== Node.TEXT_NODE){
+          alert("THIS SHOULDN'T HAPPEN (SELECTION DOES NOT BEGIN ON TEXT NODE)");
+          return;
+        }
+        var poststr = $node.text().substring(rng.startOffset);
+        var endpos = poststr.search(/[^a-zA-Z1-9]|$/);
+        // +1 because in the case nothing's found, endpos == -1, and -1 + 1 = 0
+        var searchstr = $node.text().substring(0, rng.startOffset + endpos + 1);
+        console.log(searchstr);
+        var retArr = this.rules.filter(function(item){
+          return item.rule.test(searchstr);
+        });
+        if(retArr.length>0){
+          
+          debugger;
+          //autoComplete = new AutoComplete(ed, $.extend({}, this.acData));
+        }
+        
+        function findExactMatch(str, re) {
+          for (var begin=str.length; begin>-1; --begin) {
+            if (re.test(str.substring(begin, str.length-1))) {
+              return begin;
+            }
+          }
+          return begin;
+        }
+    }
+    
+    // Autocomplete Object
     var AutoComplete = function (ed, options) {
         this.editor = ed;
 
@@ -346,6 +394,8 @@
             // If the delimiter is a string value convert it to an array. (backwards compatibility)
             autoCompleteData.delimiter = (autoCompleteData.delimiter !== undefined) ? !$.isArray(autoCompleteData.delimiter) ? [autoCompleteData.delimiter] : autoCompleteData.delimiter : ['@'];
 
+            var tracker = new Tracker(ed, autoCompleteData);
+
             function prevCharIsSpace() {
                 var start = ed.selection.getRng(true).startOffset,
                       text = ed.selection.getRng(true).startContainer.data || '',
@@ -364,7 +414,10 @@
                     }
                 }
             });
-
+            
+            ed.on('keyup', function(){
+              tracker.check();
+            });
         },
 
         getInfo: function () {

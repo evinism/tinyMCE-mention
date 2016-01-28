@@ -18,6 +18,9 @@
             elements : "rte",
             plugins : 'mention',
             mentions: {
+                rules: [
+                  {rule: /(^|\s|\.)rfi\s[0-9]+$/g, type: "RFI"}
+                ],
                 source: [
                     { name: 'Jammie Marbury'},
                     { name: 'Jenniffer Caffey'},

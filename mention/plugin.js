@@ -23,26 +23,37 @@
         }
         var $node = $(rng.startContainer);
         if ($node[0].nodeType !== Node.TEXT_NODE){
-          alert("THIS SHOULDN'T HAPPEN (SELECTION DOES NOT BEGIN ON TEXT NODE)");
           return;
         }
         var poststr = $node.text().substring(rng.startOffset);
         var endpos = poststr.search(/[^a-zA-Z1-9]|$/);
-        // +1 because in the case nothing's found, endpos == -1, and -1 + 1 = 0
-        var searchstr = $node.text().substring(0, rng.startOffset + endpos + 1);
+        //default to length of string (all remaining chars are valid)
+        if(endpos<0){
+          endpos = poststr.length;
+        }
+        var searchstr = $node.text().substring(0, rng.startOffset + endpos);
         console.log(searchstr);
         var retArr = this.rules.filter(function(item){
           return item.rule.test(searchstr);
         });
         if(retArr.length>0){
-          
-          debugger;
-          //autoComplete = new AutoComplete(ed, $.extend({}, this.acData));
+          if (this.autoComplete === undefined || (this.autoComplete.hasFocus !== undefined && !this.autoComplete.hasFocus)){
+            var startOffset = findExactMatch(searchstr, retArr[0].rule);//Match the first rule, for the time being
+            var endOffset = rng.startOffset + endpos;
+            debugger;
+            this.autoComplete = new AutoComplete(this.editor, $.extend( {}, this.acData,
+                                                          { 
+                                                            parentNode: $node[0],
+                                                            startOffset: startOffset, 
+                                                            endOffset: endOffset,
+                                                            isImplicit: true
+                                                          }));
+          }
         }
         
         function findExactMatch(str, re) {
           for (var begin=str.length; begin>-1; --begin) {
-            if (re.test(str.substring(begin, str.length-1))) {
+            if (re.test(str.substring(begin, str.length))) {
               return begin;
             }
           }
@@ -60,6 +71,16 @@
             queryBy: 'name',
             items: 10
         }, options);
+        
+        // Implicit tags contain the following options:
+        // isImplicit: true;
+        // parentNode: node
+        // startOffset
+        // endOffset
+        this.isImplicit   = this.options.isImplicit || false;
+        this.parentNode   = this.options.parentNode;
+        this.startOffset  = this.options.startOffset;
+        this.endOffset    = this.options.endOffset;
 
         this.matcher = this.options.matcher || this.matcher;
         this.renderDropdown = this.options.renderDropdown || this.renderDropdown;
@@ -67,11 +88,14 @@
         this.insert = this.options.insert || this.insert;
         this.highlighter = this.options.highlighter || this.highlighter;
 
-        this.query = '';
+        if (this.options.isImplicit){
+            //build the query manually
+            this.renderImplicitInput();
+        }else{
+          this.query = '';
+          this.renderInput();
+        }
         this.hasFocus = true;
-
-        this.renderInput();
-
         this.bindEvents();
     };
 
@@ -89,6 +113,27 @@
             this.editor.focus();
             this.editor.selection.select(this.editor.selection.dom.select('span#autocomplete-searchtext span')[0]);
             this.editor.selection.collapse(0);
+        },
+        
+        renderImplicitInput: function(){
+          var $node = $(this.parentNode);
+          var sOffset = this.startOffset;
+          var eOffset = this.endOffset;
+          var queryString = $node.text().substring(sOffset,eOffset);
+          var prestr = $node.text().substring(0,sOffset);
+          var poststr = $node.text().substring(eOffset);
+          var rawHtml = '<span id="autocomplete">' +
+                              '<span id="autocomplete-searchtext"><span class="dummy">\uFEFF' + queryString + '</span></span>' +
+                          '</span>';
+          var range = document.createRange();
+          range.setStart(this.parentNode, this.startOffset);
+          range.setEnd(this.parentNode, this.endOffset);
+          this.editor.selection.setRng(range);
+          this.editor.selection.setContent(rawHtml);
+          this.editor.focus();
+          this.editor.selection.select(this.editor.selection.dom.select('span#autocomplete-searchtext span')[0]);
+          this.editor.selection.collapse(0);
+          this.query = queryString;
         },
 
         bindEvents: function () {

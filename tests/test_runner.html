@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="../css/autocomplete.css" type="text/css" media="screen">
     <script src="../bower_components/jquery/jquery.min.js"></script>
     <script src="../bower_components/qunit/qunit/qunit.js"></script>
-    <script src="../bower_components/tinymce-dist/tinymce.min.js"></script>
+    <script src="../bower_components/tinymce-dist/tinymce.js"></script>
     <script type="text/javascript" src="test_mention.js"></script>
     <script type="text/javascript" src="../mention/plugin.js"></script>
     <script type="text/javascript">
@@ -20,8 +20,10 @@
             mentions: {
                 rules: [
                   {rule: /(^|\s)[Rr][Ff][Ii]\s[0-9]+$/, type: "RFI"}
+                  {rule: /(^|\s)[A-Z][a-z]+$/, type: "Name"}
                 ],
                 source: [
+                    { name: 'RFI 138' },
                     { name: 'Jammie Marbury'},
                     { name: 'Jenniffer Caffey'},
                     { name: 'Paul Hollen'},

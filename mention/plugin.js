@@ -9,11 +9,11 @@
       this.rules = this.acData.rules;
       this.editor = ed;
     }
-    
+
     Tracker.prototype.match = function(autoCompleteData){
       autoComplete = new AutoComplete(ed, $.extend({}, autoCompleteData));
     }
-    
+
     // Called every keypress to check against all existing rules.
     // On match, build and execute AUTOCOMPLETE
     Tracker.prototype.check = function(){
@@ -33,24 +33,23 @@
         }
         var searchstr = $node.text().substring(0, rng.startOffset + endpos);
         console.log(searchstr);
-        var retArr = this.rules.filter(function(item){
-          return item.rule.test(searchstr);
-        });
-        if(retArr.length>0){
+        var matchingRules = findMatchingRules(this.rules, searchstr);
+        if(matchingRules.length>0){
           if (this.autoComplete === undefined || (this.autoComplete.hasFocus !== undefined && !this.autoComplete.hasFocus)){
-            var startOffset = findExactMatch(searchstr, retArr[0].rule);//Match the first rule, for the time being
+            var startOffset = findExactMatch(searchstr, matchingRules[0].rule);//Match the first rule, for the time being
             var endOffset = rng.startOffset + endpos;
-            debugger;
+            //debugger;
             this.autoComplete = new AutoComplete(this.editor, $.extend( {}, this.acData,
-                                                          { 
+                                                          {
                                                             parentNode: $node[0],
-                                                            startOffset: startOffset, 
+                                                            startOffset: startOffset,
                                                             endOffset: endOffset,
-                                                            isImplicit: true
+                                                            isImplicit: true,
+                                                            rules: matchingRules
                                                           }));
           }
         }
-        
+
         function findExactMatch(str, re) {
           for (var begin=str.length; begin>-1; --begin) {
             if (re.test(str.substring(begin, str.length))) {
@@ -60,7 +59,13 @@
           return begin;
         }
     }
-    
+
+    function findMatchingRules(rules, query){
+        return rules.filter(function(item){
+          return item.rule.test(query);
+        });
+    }
+
     // Autocomplete Object
     var AutoComplete = function (ed, options) {
         this.editor = ed;
@@ -71,13 +76,15 @@
             queryBy: 'name',
             items: 10
         }, options);
-        
+
         // Implicit tags contain the following options:
         // isImplicit: true;
+        // rules: []
         // parentNode: node
         // startOffset
         // endOffset
         this.isImplicit   = this.options.isImplicit || false;
+        this.rules        = this.options.rules || [];
         this.parentNode   = this.options.parentNode;
         this.startOffset  = this.options.startOffset;
         this.endOffset    = this.options.endOffset;
@@ -114,7 +121,7 @@
             this.editor.selection.select(this.editor.selection.dom.select('span#autocomplete-searchtext span')[0]);
             this.editor.selection.collapse(0);
         },
-        
+
         renderImplicitInput: function(){
           var $node = $(this.parentNode);
           var sOffset = this.startOffset;
@@ -134,6 +141,11 @@
           this.editor.selection.select(this.editor.selection.dom.select('span#autocomplete-searchtext span')[0]);
           this.editor.selection.collapse(0);
           this.query = queryString;
+
+          // Call lookup so that dropdown is shown as soon as there's a match
+          if (this.query.length > 0) {
+            this.lookup();
+          }
         },
 
         bindEvents: function () {
@@ -173,6 +185,9 @@
             //BACKSPACE
             case 8:
                 if (this.query === '') {
+                    this.cleanUp(true);
+                } else if(this.isImplicit
+                            && findMatchingRules(this.rules, this.query).length === 0 ) {
                     this.cleanUp(true);
                 } else {
                     this.lookup();
@@ -372,6 +387,7 @@
         },
 
         select: function (item) {
+            //debugger;
             this.editor.focus();
             var selection = this.editor.dom.select('span#autocomplete')[0];
             this.editor.dom.remove(selection);
@@ -379,7 +395,7 @@
         },
 
         insert: function (item) {
-            return '<span>' + item[this.options.queryBy] + '</span>&nbsp;';
+            return '<span data-id="bluzz">' + item[this.options.queryBy] + '</span>&nbsp;';
         },
 
         cleanUp: function (rollback) {
@@ -394,7 +410,8 @@
             if (rollback) {
                 var text = this.query,
                     $selection = $(this.editor.dom.select('span#autocomplete')),
-                    replacement = $('<p>' + this.options.delimiter + text + '</p>')[0].firstChild,
+                    delimiter = this.isImplicit ? "" : this.options.delimiter,
+                    replacement = $('<p>' + delimiter + text + '</p>')[0].firstChild,
                     focus = $(this.editor.selection.getNode()).offset().top === ($selection.offset().top + (($selection.outerHeight() - $selection.height()) / 2));
 
                 this.editor.dom.replace(replacement, $selection[0]);
@@ -459,7 +476,7 @@
                     }
                 }
             });
-            
+
             ed.on('keyup', function(){
               tracker.check();
             });

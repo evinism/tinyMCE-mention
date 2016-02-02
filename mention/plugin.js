@@ -387,15 +387,19 @@
         },
 
         select: function (item) {
-            //debugger;
             this.editor.focus();
             var selection = this.editor.dom.select('span#autocomplete')[0];
+            // Check if selection is already tagged
+            if ($(selection).parent().data('id') !== undefined) {
+                // Expand selection to tag span too if so
+                selection = selection.parentNode;
+            }
             this.editor.dom.remove(selection);
             this.editor.execCommand('mceInsertContent', false, this.insert(item));
         },
 
         insert: function (item) {
-            return '<span data-id="bluzz">' + item[this.options.queryBy] + '</span>&nbsp;';
+            return '<span data-id="bluzz" style="color: blue">' + item[this.options.queryBy] + '</span>&nbsp;';
         },
 
         cleanUp: function (rollback) {

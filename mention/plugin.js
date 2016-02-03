@@ -38,7 +38,6 @@
           if (this.autoComplete === undefined || (this.autoComplete.hasFocus !== undefined && !this.autoComplete.hasFocus)){
             var startOffset = findExactMatch(searchstr, matchingRules[0].rule);//Match the first rule, for the time being
             var endOffset = rng.startOffset + endpos;
-            //debugger;
             this.autoComplete = new AutoComplete(this.editor, $.extend( {}, this.acData,
                                                           {
                                                             parentNode: $node[0],
@@ -92,7 +91,6 @@
         this.matcher = this.options.matcher || this.matcher;
         this.renderDropdown = this.options.renderDropdown || this.renderDropdown;
         this.render = this.options.render || this.render;
-        this.insert = this.options.insert || this.insert;
         this.highlighter = this.options.highlighter || this.highlighter;
 
         if (this.options.isImplicit){
@@ -169,6 +167,16 @@
         },
 
         rteKeyUp: function (e) {
+            // We want to keep as clean as possible:
+            if(this.isImplicit && findMatchingRules(this.rules, this.query).length === 0 ) {
+                var self = this;
+                setTimeout(function(){
+                  //We don't want to eliminate whitespace on edges.
+                  self.query = $(self.editor.getBody()).find('#autocomplete-searchtext').text().replace('\ufeff', '');
+                  self.cleanUp(true);
+                }, 0);// Make sure the event stops propagating before completing
+                return;
+            }
             switch (e.which || e.keyCode) {
             //DOWN ARROW
             case 40:
@@ -185,9 +193,6 @@
             //BACKSPACE
             case 8:
                 if (this.query === '') {
-                    this.cleanUp(true);
-                } else if(this.isImplicit
-                            && findMatchingRules(this.rules, this.query).length === 0 ) {
                     this.cleanUp(true);
                 } else {
                     this.lookup();
@@ -264,7 +269,7 @@
         lookup: function () {
             this.query = $.trim($(this.editor.getBody()).find('#autocomplete-searchtext').text()).replace('\ufeff', '');
 
-            if (this.$dropdown === undefined) {
+            if (this.$dropdown === undefined && !this.isImplicit) {
                 this.show();
             }
 
@@ -321,6 +326,10 @@
         process: function (data) {
             if (!this.hasFocus) {
                 return;
+            }
+            
+            if (this.$dropdown === undefined) {
+                this.show();
             }
 
             var _this = this,
@@ -390,7 +399,7 @@
             this.editor.focus();
             var selection = this.editor.dom.select('span#autocomplete')[0];
             // Check if selection is already tagged
-            if ($(selection).parent().data('id') !== undefined) {
+            if ($(selection).parent().hasClass('content-tag')){
                 // Expand selection to tag span too if so
                 selection = selection.parentNode;
             }
@@ -398,8 +407,11 @@
             this.editor.execCommand('mceInsertContent', false, this.insert(item));
         },
 
+        //Insert will no longer be a configurable item
         insert: function (item) {
-            return '<span data-id="bluzz" style="color: blue">' + item[this.options.queryBy] + '</span>&nbsp;';
+            return    '<span class="content-tag" style="color: blue">' 
+                    +   item[this.options.queryBy] 
+                    + '</span>&nbsp;';
         },
 
         cleanUp: function (rollback) {
@@ -412,6 +424,7 @@
             }
 
             if (rollback) {
+                // Make sure the most up to date query is accurate.
                 var text = this.query,
                     $selection = $(this.editor.dom.select('span#autocomplete')),
                     delimiter = this.isImplicit ? "" : this.options.delimiter,
